@@ -1,0 +1,18 @@
+
+${c3}               ..ooo@@@XXX%%%xx..
+${c3}            .oo@@XXX%x%xxx..     ` .
+${c3}          .o@XX%%xx..               ` .
+${c3}        o@X%..                  ..ooooooo
+${c3}      .@X%x.                 ..o@@^^   ^^@@o
+${c3}    .ooo@@@@@@ooo..      ..o@@^          @X%
+${c3}    o@@^^^     ^^^@@@ooo.oo@@^             %
+${c3}   xzI              ^^^o^^                 %
+${c3}   @@@o     ooooooo^@@^o^@X^@oooooo     .X%x
+${c3}  I@@@@@@@@@XX%%xx  ( o@o )X%x@ROMBASED@@@X%x
+${c3}  I@@@@XX%%xx  oo@@@@X% @@X%x   ^^^@@@@@@@X%x
+${c3}   @X%xx     o@@@@@@@X% @@XX%%x  )    ^^@X%x
+${c3}    ^   xx o@@@@@@@@Xx  ^ @XX%%x    xxx
+${c3}          o@@^^^ooo I^^ I^o ooo   .  x
+${c3}          oo @^ IX      I   ^X  @^ oo
+${c3}          IX     U  .        V     IX
+${c3}           V     .           .     V
