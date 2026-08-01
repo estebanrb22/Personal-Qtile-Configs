@@ -1,0 +1,14 @@
+#alacritty_confs
+
+[font]
+size = 12
+#size = 10
+normal = { family = "Cascadia Code", style = "Regular" }
+bold = { family = "Cascadia Code", style = "Bold" }
+italic = { family = "Cascadia Code", style = "Italic" }
+
+[window]
+opacity = 0.5
+padding = { x = 7, y = 7 }
+
+

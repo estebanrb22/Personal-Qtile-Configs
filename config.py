@@ -119,7 +119,7 @@ GROUP_NAMES = "123456"
 
 VOLUME_GET_COMMAND = "pamixer --get-volume-human"
 VOLUME_MUTE_CHECK_COMMAND = "pamixer --get-mute"
-VOLUME_UPDATE_INTERVAL = 0.03
+VOLUME_UPDATE_INTERVAL = 0.22
 
 BLOCK_SEPARATOR_PATH = "arrow_left"
 BLOCK_SEPARATOR_SIZE = 13
@@ -127,6 +127,8 @@ BLOCK_SEPARATOR_SHIFT = 0
 BLOCK_SEPARATOR_MARGIN_LEFT = 13
 BLOCK_SEPARATOR_MARGIN_RIGHT = 13
 STICKY_WINDOWS = []
+IS_ACTIVE_GROUP_BIT_MAP = {group_name: False for group_name in GROUP_NAMES}
+STICKY_WINDOWS_GRUOP = {}
 
 INFO_BLOCK_STYLES: dict[str, InfoBlockStyle] = {
     "ssd": InfoBlockStyle(
@@ -182,22 +184,23 @@ SCREEN_PROFILES = {
         bottom=BottomBarProfile(
             # ------------------------------- #
             # values for 2560p x 1440p external monitor            
-            height=27,
-            fontsize=14,
-            groupbox_padding_x=16,
-            groupbox_padding_y=4,
-            use_window_name_widget=True,
-            width_window_name_widget=510,
+            # height=27,
+            # fontsize=14,
+            # groupbox_padding_x=16,
+            # groupbox_padding_y=4,
+            # use_window_name_widget=True,
+            # width_window_name_widget=510,
             # ------------------------------- #
             # values for 5120p x 1440p external monitor
-            #width_window_name_widget=2960,
+            # width_window_name_widget=2960,
             # ------------------------------- #
             # values for 1080p external monitor            
-            #height=25,
-            #fontsize=13,
-            #groupbox_padding_x=11,
-            #groupbox_padding_y=2.5,
-            #use_window_name_widget=False,
+            height=25,
+            fontsize=13,
+            groupbox_padding_x=11,
+            groupbox_padding_y=2.5,
+            use_window_name_widget=False,
+            width_window_name_widget=0,
             # ------------------------------- #
             screen_number=1,
             fontsize_diff=0,
@@ -289,20 +292,94 @@ def float_to_front(qtile):
         window.bring_to_front()
 
 @lazy.function
+def go_to_group_if_free(qtile, group_name):
+    target_group = qtile.groups_map.get(group_name)
+    target_screen = target_group.screen
+    if target_screen and target_screen is not qtile.current_screen:
+        return
+    else:
+        qtile.groups_map[group_name].toscreen()
+
+
+def next_available_group(qtile, screen, direction):
+    group_names = list(GROUP_NAMES)
+    current_group_name = screen.group.name
+
+    if current_group_name in group_names:
+        start_index = group_names.index(current_group_name)
+        first_step = 1
+    else:
+        start_index = 0
+        first_step = 0
+
+    for step in range(first_step, len(group_names)):
+        target_index = (start_index + direction * step) % len(group_names)
+        target_group = qtile.groups_map[group_names[target_index]]
+        if target_group.screen is None or target_group.screen is screen:
+            return target_group
+
+    return None
+
+
+@lazy.function
+def cycle_workspace(qtile, direction):
+    target_group = next_available_group(qtile, qtile.current_screen, direction)
+    if target_group:
+        target_group.toscreen()
+
+
+@lazy.function
+def cycle_other_screen_workspace(qtile, direction):
+    if len(qtile.screens) < 2:
+        return
+
+    focused_screen = qtile.current_screen
+    focused_group = qtile.current_group
+    focused_window = qtile.current_window
+    target_screen = qtile.screens[(focused_screen.index + 1) % len(qtile.screens)]
+    target_group = next_available_group(qtile, target_screen, direction)
+    if target_group is None:
+        return
+
+    target_screen.set_group(target_group, warp=False)
+    qtile.core.check_screen_fullscreen_background(target_screen)
+
+    if focused_window and focused_window.group is focused_group:
+        focused_window.focus(warp=False)
+
+
+@lazy.function
 def toggle_sticky(qtile):
     window = qtile.current_window
     if window.floating:
         if window in STICKY_WINDOWS:
             STICKY_WINDOWS.remove(window)
+            STICKY_WINDOWS_GRUOP.pop(window, None)
         else:
             STICKY_WINDOWS.append(window)
+            group_name = window.group.name if window.group else qtile.current_group.name
+            if group_name in GROUP_NAMES:
+                STICKY_WINDOWS_GRUOP[window] = group_name
 
 @hook.subscribe.setgroup
 def move_sticky_windows():
+    current_group_name = qtile.current_group.name
+
     for window in STICKY_WINDOWS:
-        window.togroup(qtile.current_group.name)
+        window.togroup(current_group_name)
+        STICKY_WINDOWS_GRUOP[window] = current_group_name
         window.bring_to_front()
-    qtile.current_group.windows[0].focus()
+
+    for group_name in IS_ACTIVE_GROUP_BIT_MAP:
+        IS_ACTIVE_GROUP_BIT_MAP[group_name] = False
+
+    for screen in qtile.screens:
+        group = getattr(screen, "group", None)
+        if group and group.name in IS_ACTIVE_GROUP_BIT_MAP:
+            IS_ACTIVE_GROUP_BIT_MAP[group.name] = True
+
+    if qtile.current_group.windows:
+        qtile.current_group.windows[0].focus()
 
 mod = KEYBIND_MOD
 grow_window = WINDOW_GROW_AMOUNT
@@ -314,6 +391,12 @@ def create_keys() -> list[Key]:
         Key([mod], "right", lazy.layout.right(), desc="Move focus to right"),
         Key([mod], "down", lazy.layout.down(), desc="Move focus down"),
         Key([mod], "up", lazy.layout.up(), desc="Move focus up"),
+        Key(["mod1"], "Tab", lazy.group.next_window(), desc="Focus next window in current workspace"),
+        Key(["mod1", "shift"], "Tab", lazy.group.prev_window(), desc="Focus previous window in current workspace"),
+        Key(["control", "mod1"], "Left", cycle_workspace(-1), desc="Switch to previous workspace"),
+        Key(["control", "mod1"], "Right", cycle_workspace(1), desc="Switch to next workspace"),
+        Key(["control", mod, "mod1"], "Left", cycle_other_screen_workspace(-1), desc="Switch other screen to previous workspace"),
+        Key(["control", mod, "mod1"], "Right", cycle_other_screen_workspace(1), desc="Switch other screen to next workspace"),
     ]
 
     keys_window_management = [
@@ -329,7 +412,7 @@ def create_keys() -> list[Key]:
         Key([mod], "plus", lazy.layout.mode_horizontal_split(), desc="Horizontal split mode"),
         Key([mod], "numbersign", lazy.layout.mode_vertical_split(), desc="Vertical split mode"),
         Key([mod], "braceright", lazy.layout.mode_vertical_split(), desc="Vertical split mode"),
-        Key([mod], "Tab", lazy.next_layout(), desc="Toggle between layouts"),
+        Key([mod], "s", lazy.next_layout(), desc="Toggle between layouts"),
         Key([mod], "q", lazy.window.kill(), desc="Kill focused window"),
         Key([mod], "f", lazy.window.toggle_fullscreen(), desc="Toggle fullscreen on the focused window"),
         Key([mod, "shift"], "h", lazy.window.togroup("hidden"), desc="Send window to hidden group"),
@@ -348,7 +431,7 @@ def create_keys() -> list[Key]:
     ]
 
     keys_screen = [
-        Key([mod], "s", lazy.next_screen(), desc="Change between screens"),
+        Key([mod], "Tab", lazy.next_screen(), desc="Change between screens"),
         Key([mod], "a", lazy.window.toscreen(0), desc="Move window to screen 0"),
         Key([mod], "d", lazy.window.toscreen(1), desc="Move window to screen 1"),
         Key([mod, "control"], "m", lazy.spawn(f"{sys.executable} {PATHS.base / 'change_screen_mode.py'}"), desc="Change the screens mode"),
@@ -380,7 +463,8 @@ def create_keys() -> list[Key]:
 
     keys_applications = [
         Key([mod], "c", lazy.spawn("code"), desc="Open VSCode"),
-        Key([mod], "v", lazy.spawn("vesktop"), desc="Open Discord"),
+        Key([mod], "v", lazy.spawn("vesktop"), desc="Open Vesktop"),
+        Key([mod], "d", lazy.spawn("discord"), desc="Open Discord"),
         Key([mod], "z", lazy.spawn(f"code {PATHS.base / 'config.py'}"), desc="Open Qtile config file"),
         Key([mod], "p", lazy.spawn("zen-browser"), desc="Open Firefox browser"),
         Key([mod], "u", lazy.spawn("zen-browser -new-window https://www.u-cursos.cl/"), desc="Open U-Cursos"),
@@ -429,7 +513,7 @@ def create_keys() -> list[Key]:
     for group_name in GROUP_NAMES:
         keys.extend(
             [
-                Key([mod], group_name, lazy.group[group_name].toscreen(), desc=f"Switch to group {group_name}"),
+                Key([mod], group_name, go_to_group_if_free(group_name), desc=f"Switch to group {group_name}"),
                 Key(
                     [mod, "shift"],
                     group_name,
@@ -487,9 +571,9 @@ def create_bottom_bar(profile: BottomBarProfile) -> bar.Bar:
                 visible_groups=list(GROUP_NAMES),
                 highlight_method="block",
                 this_screen_border=COLORS.accent_green,
+                other_screen_border=COLORS.accent_pink,
                 other_current_screen_border=COLORS.accent_pink,
                 this_current_screen_border=COLORS.accent_green,
-                other_screen_border=COLORS.accent_pink,
                 active=COLORS.fg_white,
                 inactive=COLORS.bg_dark,
                 center_aligned=True,
@@ -596,7 +680,7 @@ def create_bottom_bar(profile: BottomBarProfile) -> bar.Bar:
                 format="{essid} {percent:2.0%}",
                 update_interval=0.5,
                 fontsize=profile.fontsize,
-                disconnected_message="✈︎ ✈︎ ✈︎",
+                disconnected_message="✈︎ ✈︎ ✈︎ ✈︎",
                 foreground=network_style.text,
                 background=network_style.background,
                 decorations=create_block_separator(),
@@ -696,8 +780,8 @@ mouse = [
     Drag([mod], "Button1", lazy.window.set_position_floating(), start=lazy.window.get_position()),
     Drag([], "Button9", lazy.window.set_position_floating(), start=lazy.window.get_position()),
     Drag([mod], "Button3", lazy.window.set_size_floating(), start=lazy.window.get_size()),
+    Click([], "Button8", toggle_sticky()),
     Click([mod], "Button2", float_to_front()),
-    Click([], "Button8", float_to_front()),
 ]
 
 dgroups_key_binder = None
