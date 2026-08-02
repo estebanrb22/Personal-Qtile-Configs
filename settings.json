@@ -1,0 +1,60 @@
+{
+    "workbench.colorTheme": "Monokai Charcoal Full Dark",
+    "editor.fontFamily": "'Cascadia Code', 'monospace', 'Noto Color Emoji'",
+    "editor.minimap.enabled": false,
+
+    "terminal.integrated.cwd": ".",
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "terminal.integrated.fontFamily": "'Cascadia Code'",
+    "terminal.integrated.env.linux": {
+        "PS1": "\\[\\e[32m\\]\\u@\\h \\[\\e[34m\\]\\W\\[\\e[0m\\] \\$ "
+    },
+    "explorer.confirmDelete": false,
+    "git.autofetch": true,
+    "editor.tabSize": 2,
+    "security.workspace.trust.untrustedFiles": "open",
+    "chat.viewSessions.orientation": "stacked",
+    "glassit.alpha": 255,
+    "workbench.editorAssociations": {
+        "*.md": "vscode.markdown.preview.editor",
+    },
+    
+    "latex-workshop.view.pdf.viewer": "tab",
+    "latex-workshop.latex.autoBuild.run": "onSave",
+    "latex-workshop.latex.recipe.default": "first",
+    "latex-workshop.latex.outDir": "%DIR%",
+    "latex-workshop.latex.recipes": [
+      {
+        "name": "latexmk informe",
+        "tools": ["latexmk informe"]
+      }
+    ],
+    "latex-workshop.latex.tools": [
+      {
+        "name": "latexmk informe",
+        "command": "latexmk",
+        "args": [
+          "-cd",
+          "-pdf",
+          "-synctex=0",
+          "-interaction=nonstopmode",
+          "-file-line-error",
+          "-emulate-aux-dir",
+          "-auxdir=%DIR%/build",
+          "-out2dir=%DIR%",
+          "%DOC%"
+        ]
+      }
+    ],
+    "[latex]": {
+      "editor.wordWrap": "on",
+      "editor.wordWrapColumn": 100,
+      "editor.rulers": [100]
+    },
+
+    "pdf-preview.default.scale": "page-width",
+    "pdf-preview.default.sidebar": false,
+    "pdf-preview.default.scrollMode": "vertical",
+    "pdf-preview.default.spreadMode": "none",
+    "explorer.confirmDragAndDrop": false
+}
